@@ -1,0 +1,42 @@
+{
+  "name": "sennen",
+  "version": "0.1.0",
+  "description": "MIT-licensed ML research plugin for scientific datasets, Git, DVC, and reproducible evaluation workflows.",
+  "author": {
+    "name": "Dirk",
+    "email": "dirk@example.com",
+    "url": "https://github.com/dirk"
+  },
+  "homepage": "https://github.com/dirk/sennen",
+  "repository": "https://github.com/dirk/sennen",
+  "license": "MIT",
+  "keywords": [
+    "ml",
+    "research",
+    "evaluation",
+    "scientific-data",
+    "git",
+    "dvc"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Sennen",
+    "shortDescription": "Scientific ML workflows for data, visualization, explanation, splits, metrics, baselines, review, and experiments.",
+    "longDescription": "Sennen packages reusable Codex skills for scientific ML work: connecting datasets, visualizing structure, explaining models, checking splits, choosing metrics, establishing baselines, running experiments, identifying defects, preprocessing features, and reviewing the approach with Git and DVC-aware workflows.",
+    "developerName": "Dirk",
+    "category": "Developer Tools",
+    "capabilities": [
+      "Interactive",
+      "Write"
+    ],
+    "websiteURL": "https://github.com/dirk/sennen",
+    "privacyPolicyURL": "https://github.com/dirk/sennen",
+    "termsOfServiceURL": "https://github.com/dirk/sennen",
+    "defaultPrompt": [
+      "/sen:data connect scientific data sources with Git and DVC support.",
+      "/sen:review critique the current ML approach.",
+      "/sen:baseline establish a reproducible baseline to beat."
+    ],
+    "brandColor": "#0F766E"
+  }
+}
