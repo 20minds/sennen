@@ -1,0 +1,452 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT_DIR="$(cd "$(dirname "$0")" && pwd)"
+SENNEN_DIR="$ROOT_DIR/sennen"
+MODE=""
+TARGET_REPO=""
+ASSUME_YES=0
+GIT_CHOICE="auto"
+UV_CHOICE="auto"
+DVC_CHOICE="auto"
+TRACKING_BACKEND="auto"
+
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --codex) MODE="codex"; shift ;;
+    --claude) MODE="claude"; shift ;;
+    --claude-standalone) MODE="claude-standalone"; shift ;;
+    --yes) ASSUME_YES=1; shift ;;
+    --git) GIT_CHOICE="yes"; shift ;;
+    --no-git) GIT_CHOICE="no"; shift ;;
+    --uv) UV_CHOICE="yes"; shift ;;
+    --no-uv) UV_CHOICE="no"; shift ;;
+    --dvc) DVC_CHOICE="yes"; shift ;;
+    --no-dvc) DVC_CHOICE="no"; shift ;;
+    --mlflow) TRACKING_BACKEND="mlflow"; shift ;;
+    --no-tracking) TRACKING_BACKEND="none"; shift ;;
+    -* ) echo "Unknown argument: $1" >&2; exit 1 ;;
+    * )
+      if [ -n "$TARGET_REPO" ]; then
+        echo "Unexpected extra positional argument: $1" >&2
+        exit 1
+      fi
+      TARGET_REPO="$1"
+      shift
+      ;;
+  esac
+done
+
+if [ -z "$MODE" ] && [ -n "$TARGET_REPO" ]; then
+  MODE="both"
+fi
+
+if [ -z "$MODE" ]; then
+  echo "Usage: ./setup [--codex|--claude|--claude-standalone] [repo-path] [--yes] [--git|--no-git] [--uv|--no-uv] [--dvc|--no-dvc] [--mlflow|--no-tracking]" >&2
+  echo "  ./setup . installs both Codex and Claude wiring into the current repo." >&2
+  exit 1
+fi
+
+print_banner() {
+  cat <<'EOF'
+          /\        /\
+         /  \  /\  /  \
+        /    \/  \/    \
+       /                \
+      /   /\      /\     \
+     /   /  \____/  \     \
+
+                sennen
+             by 20minds.ai
+
+EOF
+}
+
+print_banner
+
+link_codex_skill_dirs() {
+  local sennen_dir="$1"
+  local skills_dir="$2"
+  local source_dir="$sennen_dir/skills"
+
+  mkdir -p "$skills_dir"
+
+  ln -sfn "$sennen_dir" "$skills_dir/sennen"
+  for skill_path in "$source_dir"/*; do
+    [ -d "$skill_path" ] || continue
+    local skill_name
+    skill_name="$(basename "$skill_path")"
+    mkdir -p "$skills_dir/sennen-$skill_name"
+    ln -sfn "$skill_path/SKILL.md" "$skills_dir/sennen-$skill_name/SKILL.md"
+  done
+}
+
+install_claude_plugin_dir() {
+  local plugin_dir="$1"
+  mkdir -p "$(dirname "$plugin_dir")"
+  ln -sfn "$SENNEN_DIR" "$plugin_dir"
+}
+
+install_claude_standalone_commands() {
+  local target_repo="$1"
+  local commands_dir="$target_repo/.claude/commands"
+  local source_dir="$SENNEN_DIR/commands"
+
+  mkdir -p "$commands_dir"
+  for source_path in "$source_dir"/*.md; do
+    [ -f "$source_path" ] || continue
+    local command_name
+    command_name="$(basename "$source_path")"
+    sed 's#/sen:#/#g' "$source_path" > "$commands_dir/$command_name"
+  done
+}
+
+confirm() {
+  local prompt="$1"
+  local default_answer="$2"
+  local reply=""
+
+  if [ "$ASSUME_YES" -eq 1 ]; then
+    [ "$default_answer" = "yes" ] && return 0
+    return 1
+  fi
+
+  if [ "$default_answer" = "yes" ]; then
+    printf "%s [Y/n] " "$prompt"
+  else
+    printf "%s [y/N] " "$prompt"
+  fi
+  read -r reply
+  reply="${reply:-}"
+
+  if [ -z "$reply" ]; then
+    [ "$default_answer" = "yes" ] && return 0
+    return 1
+  fi
+
+  case "$reply" in
+    y|Y|yes|YES) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+choice_enabled() {
+  local choice="$1"
+  local prompt="$2"
+  local default_answer="$3"
+
+  case "$choice" in
+    yes) return 0 ;;
+    no) return 1 ;;
+    auto) confirm "$prompt" "$default_answer"; return $? ;;
+    *) return 1 ;;
+  esac
+}
+
+select_tracking_backend() {
+  local reply=""
+
+  case "$TRACKING_BACKEND" in
+    mlflow|none)
+      TRACKING_SELECTED="$TRACKING_BACKEND"
+      return
+      ;;
+  esac
+
+  if [ "$ASSUME_YES" -eq 1 ]; then
+    TRACKING_SELECTED="none"
+    return
+  fi
+
+  printf "Enable MLflow? [y/N] "
+  read -r reply
+  reply="${reply:-}"
+
+  case "$reply" in
+    y|Y|yes|YES|m|M|mlflow|MLFLOW) TRACKING_SELECTED="mlflow" ;;
+    *) TRACKING_SELECTED="none" ;;
+  esac
+}
+
+repo_has_git() {
+  git -C "$1" rev-parse --is-inside-work-tree >/dev/null 2>&1
+}
+
+dvc_available() {
+  local repo="${1:-}"
+  if command -v dvc >/dev/null 2>&1; then
+    return 0
+  fi
+  if [ -n "$repo" ] && command -v uv >/dev/null 2>&1 && [ -f "$repo/pyproject.toml" ]; then
+    (
+      cd "$repo"
+      uv run dvc version >/dev/null 2>&1
+    ) && return 0
+  fi
+  if command -v uv >/dev/null 2>&1; then
+    uv tool run --from dvc dvc version >/dev/null 2>&1 && return 0
+  fi
+  return 1
+}
+
+run_dvc() {
+  local repo="$1"
+  shift
+  if command -v dvc >/dev/null 2>&1; then
+    (
+      cd "$repo"
+      dvc "$@"
+    )
+    return
+  fi
+  if [ -f "$repo/pyproject.toml" ]; then
+    (
+      cd "$repo"
+      uv run dvc "$@"
+    )
+    return
+  fi
+  uv tool run --from dvc dvc "$@"
+}
+
+sanitize_project_name() {
+  local raw
+  local sanitized
+  raw="$(basename "$(cd "$1" && pwd)")"
+  sanitized="$(printf '%s' "$raw" | tr '[:upper:]' '[:lower:]' | tr -cs 'a-z0-9._-' '-')"
+  sanitized="$(printf '%s' "$sanitized" | sed -E 's/^[^a-z0-9]+//; s/[^a-z0-9]+$//')"
+  if [ -z "$sanitized" ]; then
+    sanitized="sennen-project"
+  fi
+  printf '%s' "$sanitized"
+}
+
+ensure_pyproject() {
+  local repo="$1"
+  local pyproject="$repo/pyproject.toml"
+  local project_name
+
+  project_name="$(sanitize_project_name "$repo")"
+
+  if [ -f "$pyproject" ]; then
+    if grep -q '^name = "-"$' "$pyproject"; then
+      python3 - "$pyproject" "$project_name" <<'PY'
+from pathlib import Path
+import sys
+
+path = Path(sys.argv[1])
+name = sys.argv[2]
+text = path.read_text()
+text = text.replace('name = "-"', f'name = "{name}"', 1)
+path.write_text(text)
+PY
+    fi
+    return 0
+  fi
+
+  if [ -f "$repo/requirements.txt" ] || [ -f "$repo/requirements.in" ]; then
+    echo "requirements.txt-style dependency tracking is not supported by setup; use pyproject.toml with uv instead"
+  fi
+
+  if ! confirm "No pyproject.toml found in $repo. Create one for uv-managed dependencies?" "yes"; then
+    return 1
+  fi
+
+  cat > "$pyproject" <<EOF
+[project]
+name = "$project_name"
+version = "0.1.0"
+requires-python = ">=3.10"
+dependencies = []
+EOF
+  return 0
+}
+
+uv_add_dependency() {
+  local repo="$1"
+  local package="$2"
+  (
+    cd "$repo"
+    uv add "$package"
+  )
+}
+
+ensure_gitignore_entry() {
+  local repo="$1"
+  local entry="$2"
+  local gitignore="$repo/.gitignore"
+
+  if [ ! -f "$gitignore" ]; then
+    printf "%s\n" "$entry" > "$gitignore"
+    return
+  fi
+
+  if grep -Fxq "$entry" "$gitignore"; then
+    return
+  fi
+
+  if [ -s "$gitignore" ]; then
+    printf "\n%s\n" "$entry" >> "$gitignore"
+  else
+    printf "%s\n" "$entry" >> "$gitignore"
+  fi
+}
+
+ensure_default_gitignore() {
+  local repo="$1"
+
+  ensure_gitignore_entry "$repo" "__pycache__/"
+  ensure_gitignore_entry "$repo" "*.pyc"
+  ensure_gitignore_entry "$repo" "*.pyo"
+  ensure_gitignore_entry "$repo" "*.pyd"
+  ensure_gitignore_entry "$repo" ".venv/"
+  ensure_gitignore_entry "$repo" ".pytest_cache/"
+  ensure_gitignore_entry "$repo" ".mypy_cache/"
+  ensure_gitignore_entry "$repo" ".ruff_cache/"
+  ensure_gitignore_entry "$repo" ".coverage"
+  ensure_gitignore_entry "$repo" "htmlcov/"
+  ensure_gitignore_entry "$repo" "mlruns/"
+  ensure_gitignore_entry "$repo" "mlflow.db"
+  ensure_gitignore_entry "$repo" ".DS_Store"
+}
+
+if [ -n "$TARGET_REPO" ]; then
+  mkdir -p "$TARGET_REPO"
+
+  HAS_GIT=0
+  HAS_VENV=0
+  HAS_DVC=0
+  HAS_UV=0
+  HAS_DVC_BIN=0
+  HAS_PYPROJECT=0
+  TRACKING_SELECTED="none"
+  TRACKING_READY="none"
+
+  repo_has_git "$TARGET_REPO" && HAS_GIT=1
+  [ -d "$TARGET_REPO/.venv" ] && HAS_VENV=1
+  [ -d "$TARGET_REPO/.dvc" ] && HAS_DVC=1
+  [ -f "$TARGET_REPO/pyproject.toml" ] && HAS_PYPROJECT=1
+  command -v uv >/dev/null 2>&1 && HAS_UV=1
+  dvc_available "$TARGET_REPO" && HAS_DVC_BIN=1
+
+  if [ "$HAS_GIT" -eq 0 ] && choice_enabled "$GIT_CHOICE" "Initialize Git?" "yes"; then
+    git -C "$TARGET_REPO" init >/dev/null
+    HAS_GIT=1
+  fi
+
+  if [ "$MODE" = "codex" ] || [ "$MODE" = "both" ]; then
+    python3 "$SENNEN_DIR/scripts/install_local.py" "$TARGET_REPO" --force --quiet
+  fi
+
+  if [ "$MODE" = "claude" ] || [ "$MODE" = "both" ]; then
+    install_claude_plugin_dir "$TARGET_REPO/plugins/sennen"
+  fi
+
+  if [ "$MODE" = "claude-standalone" ]; then
+    install_claude_standalone_commands "$TARGET_REPO"
+  fi
+
+  ensure_default_gitignore "$TARGET_REPO"
+
+  if [ "$HAS_VENV" -eq 0 ]; then
+    if [ "$HAS_UV" -eq 1 ]; then
+      if choice_enabled "$UV_CHOICE" "Create .venv with uv?" "yes"; then
+        (
+          cd "$TARGET_REPO"
+          uv venv .venv >/dev/null
+        )
+        HAS_VENV=1
+      fi
+    else
+      echo "uv not found; skipping .venv creation"
+    fi
+  fi
+
+  if [ "$HAS_UV" -eq 0 ]; then
+    echo "uv not found; skipping Python dependency installation"
+  fi
+
+  if choice_enabled "$DVC_CHOICE" "Enable DVC?" "yes"; then
+    if [ "$HAS_UV" -eq 0 ]; then
+      echo "uv not found; skipping DVC install"
+    elif ensure_pyproject "$TARGET_REPO"; then
+      HAS_PYPROJECT=1
+      echo "Adding dvc..."
+      uv_add_dependency "$TARGET_REPO" "dvc"
+      echo "dvc added"
+      HAS_DVC_BIN=1
+      if [ "$HAS_GIT" -eq 1 ]; then
+        if [ "$HAS_DVC" -eq 0 ]; then
+          if confirm "Run dvc init?" "yes"; then
+            run_dvc "$TARGET_REPO" init >/dev/null
+            HAS_DVC=1
+            echo "dvc initialized"
+          fi
+        else
+          echo "dvc already initialized"
+        fi
+      else
+        echo "Git repo not available; skipping DVC init"
+      fi
+    fi
+  fi
+
+  select_tracking_backend
+  if [ "$TRACKING_SELECTED" = "mlflow" ]; then
+    if [ "$HAS_UV" -eq 0 ]; then
+      echo "uv not found; skipping $TRACKING_SELECTED install"
+    elif ensure_pyproject "$TARGET_REPO"; then
+      HAS_PYPROJECT=1
+      echo "Adding mlflow..."
+      uv_add_dependency "$TARGET_REPO" "$TRACKING_SELECTED"
+      echo "mlflow added"
+      TRACKING_READY="$TRACKING_SELECTED"
+    fi
+  fi
+
+  echo
+  echo "Ready."
+  echo "  repo: $TARGET_REPO"
+  if [ "$MODE" = "codex" ]; then
+    echo "  codex: enabled"
+  elif [ "$MODE" = "claude" ]; then
+    echo "  claude: $TARGET_REPO/plugins/sennen"
+    echo "  run: claude --plugin-dir $TARGET_REPO/plugins/sennen"
+  elif [ "$MODE" = "claude-standalone" ]; then
+    echo "  claude: standalone commands in .claude/commands"
+  else
+    echo "  codex: enabled"
+    echo "  claude: $TARGET_REPO/plugins/sennen"
+    echo "  claude run: claude --plugin-dir $TARGET_REPO/plugins/sennen"
+  fi
+  [ "$HAS_DVC" -eq 1 ] && echo "  dvc: enabled"
+  [ "$TRACKING_READY" = "mlflow" ] && echo "  mlflow: sqlite:///mlflow.db"
+  exit 0
+fi
+
+if [ "$MODE" = "codex" ]; then
+  mkdir -p "$HOME/.codex/skills"
+  link_codex_skill_dirs "$SENNEN_DIR" "$HOME/.codex/skills"
+  echo "sennen ready (codex)"
+  echo "  root: $HOME/.codex/skills/sennen"
+  echo "  commands: sennen-data, sennen-visualize, sennen-defects, sennen-split, sennen-metrics, sennen-baseline, sennen-preprocess, sennen-experiment, sennen-review, sennen-explain"
+elif [ "$MODE" = "claude" ]; then
+  CLAUDE_PLUGIN_DIR="$HOME/.claude/plugins/sennen"
+  install_claude_plugin_dir "$CLAUDE_PLUGIN_DIR"
+  echo "sennen ready (claude)"
+  echo "  plugin: $CLAUDE_PLUGIN_DIR"
+  echo "  run: claude --plugin-dir $CLAUDE_PLUGIN_DIR"
+  echo "  commands: /sen:data, /sen:visualize, /sen:defects, /sen:split, /sen:metrics, /sen:baseline, /sen:preprocess, /sen:experiment, /sen:review, /sen:explain"
+elif [ "$MODE" = "claude-standalone" ]; then
+  echo "setup --claude-standalone requires a repo path" >&2
+  exit 1
+else
+  mkdir -p "$HOME/.codex/skills"
+  link_codex_skill_dirs "$SENNEN_DIR" "$HOME/.codex/skills"
+  CLAUDE_PLUGIN_DIR="$HOME/.claude/plugins/sennen"
+  install_claude_plugin_dir "$CLAUDE_PLUGIN_DIR"
+  echo "sennen ready (codex + claude)"
+  echo "  codex root: $HOME/.codex/skills/sennen"
+  echo "  claude plugin: $CLAUDE_PLUGIN_DIR"
+  echo "  claude run: claude --plugin-dir $CLAUDE_PLUGIN_DIR"
+fi

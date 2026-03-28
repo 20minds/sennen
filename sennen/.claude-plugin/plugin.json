@@ -1,0 +1,11 @@
+{
+  "name": "sen",
+  "description": "MIT-licensed ML research plugin for scientific datasets, Git, DVC, and reproducible evaluation workflows.",
+  "version": "0.1.0",
+  "author": {
+    "name": "Dirk"
+  },
+  "homepage": "https://github.com/dirk/sennen",
+  "repository": "https://github.com/dirk/sennen",
+  "license": "MIT"
+}

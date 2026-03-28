@@ -1,0 +1,20 @@
+{
+  "name": "local-research",
+  "interface": {
+    "displayName": "Local Research Plugins"
+  },
+  "plugins": [
+    {
+      "name": "sennen",
+      "source": {
+        "source": "local",
+        "path": "./sennen"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    }
+  ]
+}
