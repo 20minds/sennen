@@ -7,10 +7,17 @@ description: Check a split strategy for leakage and common pitfalls.
 
 Use this command when the user explicitly wants split design.
 
+## Read First
+
+- relevant source tables under `data/`
+- existing split code under `src/data/`
+- `config/metrics/metrics.yaml` if it exists
+
 ## Required Output
 
 - `config/split/split.yaml`
 - optional split code in `src/data/00x_split.py`
+- optional split manifests under `data/splits/`
 
 ## Workflow
 
@@ -18,9 +25,10 @@ Use this command when the user explicitly wants split design.
 2. Choose the safest split strategy consistent with the task.
 3. Test the current setup for leakage and common evaluation pitfalls.
 4. Record exact leakage guards in `config/split/split.yaml`.
-4. If executable split code is needed, create `src/data/001_split.py` or the next available numbered split file.
+5. If executable split code is needed, create `src/data/001_split.py` or the next available numbered split file.
+6. If split manifests are materialized and DVC is available, track them with DVC.
 
-## Concrete Examples
+## Examples
 
 - Git: commit split configuration, split scripts, and sampled ID manifests so reviews can inspect the logic.
 - DVC: if split outputs are materialized under `data/splits/`, prefer tracking that directory with `uv run dvc add data/splits/`, then run `uv run dvc status` to confirm the split artifacts are tracked. If the repo intentionally treats all of `data/` as one DVC-managed artifact boundary, `uv run dvc add data/` is also acceptable.

@@ -7,29 +7,34 @@ description: Run and compare reproducible experiments with Git and DVC-aware out
 
 Use this skill to validate the current approach and compare experiment results.
 
-## Goals
+## Read First
 
-- run or inspect reproducible experiments
-- compare against the current baseline
-- record results in a Git and DVC-friendly way
-- write `reports/experiments_latest.md`
-- use MLflow consistently when tracked runs are needed
+- `config/metrics/metrics.yaml`
+- `config/split/split.yaml`
+- `config/preprocess/pipeline.yaml` if it exists
+- current experiment reports and existing code under `src/experiment/`
+
+## Required Outputs
+
+- experiment code in `src/experiment/00x_*.py`
+- concise run summary in `reports/experiments_latest.md`
+- optional model artifacts in `models/`
 
 ## Workflow
 
 1. Read `config/metrics/metrics.yaml`, `config/split/split.yaml`, `config/preprocess/pipeline.yaml`, and current experiment reports if they exist.
 2. Inspect current code, configs, and prior experiment outputs.
 3. Check that the experiment respects the current split and metric contracts.
-4. Decide whether MLflow should be used for this repo's tracked runs and prefer `sqlite:///mlflow.db` for local metadata when MLflow is enabled.
+4. If the repo uses MLflow or the user asks for tracked runs, keep the new run compatible with the repo's MLflow setup and prefer `sqlite:///mlflow.db` for local metadata.
 5. Compare outcomes against the baseline.
 6. Create or update `src/experiment/001_baseline.py` or the next available numbered experiment file for the run being added.
 7. Write a concise report with setup, results, regressions, and next ablations to `reports/experiments_latest.md`.
 
-## Concrete Examples
+## Examples
 
 - Git: commit experiment config changes separately from result updates when possible so code review stays readable.
 - DVC: prefer versioned `reports/` artifacts and large outputs tracked with DVC when the repo already uses DVC.
-- MLflow: use MLflow when the repo already uses it or when a richer run-comparison UI or remote tracking server is explicitly needed, and prefer `sqlite:///mlflow.db` over file-backed metadata for local setups.
+- MLflow: if the repo uses MLflow or the user asks for tracked runs, log params, metrics, and model references consistently there, and prefer `sqlite:///mlflow.db` over file-backed metadata for local setups.
 - `uv`: prefer keeping training and validation tooling in the repo's managed `uv` environment when the project already uses `uv`.
 - Typical report contents: metric deltas versus baseline, ablation table, seed stability, failure slices, and whether the result is credible enough to merge.
 

@@ -7,6 +7,12 @@ description: Identify defects in the data itself.
 
 Use this command when the user explicitly wants data quality interrogation.
 
+## Read First
+
+- source data under `data/`
+- loading code under `src/data/`
+- existing quality reports under `reports/data_quality/`
+
 ## Required Output
 
 - `reports/data_quality/00x_*.md`
@@ -28,7 +34,7 @@ Use this command when the user explicitly wants data quality interrogation.
 - inconsistent labels or suspicious label noise
 - schema mismatches across files or sources
 
-## Concrete Examples
+## Examples
 
 - Git: commit data-profile findings and any validator scripts; do not commit raw defect dumps if they are large or sensitive.
 - DVC: if defect reports are large tables or plots, prefer storing them under `reports/data_quality/` with DVC tracking.

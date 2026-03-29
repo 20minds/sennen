@@ -7,6 +7,12 @@ description: Fix data defects and engineer features in a reproducible preprocess
 
 Use this skill when the user wants preprocessing design or feature engineering.
 
+## Read First
+
+- `config/split/split.yaml`
+- current preprocessing code under `src/preprocess/`
+- current raw and processed data layout under `data/`
+
 ## Required Output
 
 - `config/preprocess/pipeline.yaml`
@@ -28,9 +34,9 @@ Use this skill when the user wants preprocessing design or feature engineering.
 2. Write or update `config/preprocess/pipeline.yaml`.
 3. Create or update `src/preprocess/001_preprocess.py` or the next available numbered preprocessing file.
 4. Write derived outputs to `data/processed/`.
-5. If processed outputs were materialized and DVC is available, track them with DVC automatically.
+5. If processed outputs were materialized and DVC is available, track them with DVC.
 
-## Concrete Examples
+## Examples
 
 - Git: commit preprocessing specs, transformer code, and feature lists so changes are diffable.
 - DVC: if preprocessing produces cached features, prefer `data/processed/` tracked with DVC instead of Git. In clean repos where `data/` is one DVC-managed artifact boundary, prefer `uv run dvc add data/`, then run `uv run dvc status`. If `data/` already mixes Git-tracked metadata with DVC artifacts, prefer `uv run dvc add data/processed/`.

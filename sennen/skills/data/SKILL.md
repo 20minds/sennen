@@ -7,25 +7,28 @@ description: Connect 100+ scientific data sources with Git and DVC-aware workflo
 
 Use this skill when the user needs to discover, inspect, or ingest scientific data.
 
-## Goals
+## Read First
 
-- work with 100+ scientific data sources in a consistent way
-- inspect schemas, file formats, and dataset structure
-- respect existing Git and DVC workflows
-- write durable project context into `.sennen/config.yaml`
+- existing ingestion code under `src/data/`
+- existing data directories under `data/`
+- existing DVC files such as `.dvc`, `dvc.yaml`, and `dvc.lock`
+
+## Required Outputs
+
+- raw source artifacts under `data/raw/`
+- optional ingestion code in `src/data/00x_*.py`
+- optional schema or source notes in `reports/data_quality/` or `reports/review/`
 
 ## Workflow
 
-1. Read `.sennen/config.yaml` if it exists.
-2. Inspect the current repo for data loaders, DVC files, dataset manifests, notebooks, and raw data references.
-3. Identify the source type and access pattern.
-4. Recommend or implement a Git and DVC-friendly way to version the dataset metadata and artifacts.
-5. Store raw inputs under `data/raw/`.
-6. If new ingestion code is needed, create `src/data/001_ingest.py` or the next available numbered file.
-7. Update `.sennen/config.yaml` with dataset paths, task hints, and access notes.
-8. If new raw data was downloaded and DVC is available, track it with DVC automatically.
+1. Inspect the current repo for data loaders, DVC files, dataset manifests, notebooks, and raw data references.
+2. Identify the source type and access pattern.
+3. Recommend or implement a Git and DVC-friendly way to version dataset metadata and artifacts.
+4. Store raw inputs under `data/raw/`.
+5. If new ingestion code is needed, create `src/data/001_ingest.py` or the next available numbered file.
+6. If new raw data was downloaded and DVC is available, track it with DVC.
 
-## Concrete Examples
+## Examples
 
 - Git: commit dataset manifests, schema notes, and loader code; do not commit large raw data blobs.
 - DVC: inspect `dvc.yaml`, `.dvc` files, and `dvc.lock`; prefer `dvc pull` for existing tracked artifacts. For clean repos where `data/` is intended to be one DVC-managed artifact boundary, prefer `uv run dvc add data/`, then check `uv run dvc status`. If `data/` already contains mixed Git-tracked metadata or existing `.dvc` files, prefer narrower boundaries such as `uv run dvc add data/raw/`.
