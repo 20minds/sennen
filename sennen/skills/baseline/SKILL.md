@@ -7,10 +7,17 @@ description: Establish a reproducible baseline to beat.
 
 Use this skill after metrics and split assumptions exist. The goal is to create a baseline that is honest, reproducible, and hard to fool yourself against.
 
+## Read First
+
+- `config/metrics/metrics.yaml`
+- `config/split/split.yaml`
+- existing experiment code under `src/experiment/`
+
 ## Required Outputs
 
 - one baseline implementation in `src/experiment/00x_baseline.py`
 - a short rationale in `reports/experiments_latest.md` or `reports/review/`
+- optional baseline artifacts in `models/`
 
 ## Workflow
 
@@ -27,10 +34,10 @@ Use this skill after metrics and split assumptions exist. The goal is to create 
    - what metric it optimizes
    - what result future models must exceed
 
-## Concrete Examples
+## Examples
 
 - Git: commit the baseline code and config together so the baseline is reviewable.
-- DVC: if the baseline writes model artifacts or prediction files, prefer `models/baseline.*` and `outputs/baseline_preds.*` tracked with DVC.
+- DVC: if the baseline writes large model artifacts or prediction tables, prefer `models/` or `reports/` artifacts tracked with DVC instead of Git-tracked blobs.
 - Tracking: use MLflow for baseline metrics and params when the repo already uses it or the user explicitly asks for tracked runs, and prefer `sqlite:///mlflow.db` for local metadata.
 - `uv`: prefer keeping baseline tooling in the repo's managed `uv` environment when the project already uses `uv`.
 - Typical baselines: majority class, mean regressor, logistic regression, elastic net, random forest, or a small gradient-boosted tree model with minimal tuning.

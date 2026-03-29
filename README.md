@@ -1,6 +1,6 @@
 # Sennen
 
-| <img src="assets/sennen.png" alt="Sennen logo" /> | `Sennen` is a Claude Code / Codex plugin for ML workflows. <br/><br/> It packs reusable skills for data access, visualization, traint/test splits, metrics advice, baseline models, experiments, review, data defect analysis, preprocessing, and explanation. <br/><br/> It is designed for Git, MLflow for experiment track, DVC for data versioning, and scientific data sources. |
+| <img src="assets/sennen.png" alt="Sennen logo" /> | `Sennen` is a Claude Code / Codex plugin for ML workflows. <br/><br/> It provides reusable skills for data access, visualization, train/test splits, metrics, baselines, experiments, review, data defect analysis, preprocessing, and explanation. <br/><br/> It is designed for Git, MLflow experiment tracking, DVC data versioning, and scientific data sources. |
 | ------------------------------------------------------------- | ---------------------------- |
 
 ## Sennen Commands
@@ -40,7 +40,7 @@ Goal: predict whether a clinical trial is still open to enrollment 12 months aft
 
 `Sennen` treats data versioning and experiment tracking separately:
 
-- DVC tracks downloaded and generated datasets in `data/raw/`, and `data/processed/`.
+- DVC tracks downloaded and generated datasets in `data/raw/`, `data/processed/`, and optionally `data/splits/`.
 - MLflow is the supported experiment metrics backend.
 - `setup` manages Python dependencies through `uv` and `pyproject.toml` only.
 
@@ -106,12 +106,10 @@ You can also run it non-interactively:
 
 ## Project Layout
 
-`Sennen` keeps plugin metadata in `.sennen/config.yaml`. The actual project artifacts live in normal repo folders:
+`Sennen` uses normal repo folders for project artifacts:
 
 ```text
 .
-├── .sennen/
-│   └── config.yaml
 ├── config/
 │   ├── experiment/
 │   ├── metrics/
@@ -122,7 +120,8 @@ You can also run it non-interactively:
 │       └── split.yaml
 ├── data/
 │   ├── raw/
-│   └── processed/
+│   ├── processed/
+│   └── splits/
 ├── models/
 ├── reports/
 │   ├── data_quality/
@@ -143,7 +142,7 @@ You can also run it non-interactively:
 
 Those folders are conventions used by the skills. They are created by project work as needed, not by `setup`.
 
-When `Sennen` downloads data into `data/raw/` or materializes outputs into `data/processed/`, those datasets should be automatically tracked with DVC when DVC is available. For experimental metrics, use MLflow to track runs in `sqlite:///mlflow.db`.
+When `Sennen` downloads data into `data/raw/` or materializes outputs into `data/processed/` or `data/splits/`, those datasets should be tracked with DVC when DVC is available. Prefer `uv run dvc add data/` only when `data/` is intentionally one DVC-managed artifact boundary; otherwise track narrower directories. For experiment metrics, use MLflow to track runs in `sqlite:///mlflow.db`.
 
 ## Scientific Database Skills
 

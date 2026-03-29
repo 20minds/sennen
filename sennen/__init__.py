@@ -1,0 +1,1 @@
+"""Sennen plugin package."""

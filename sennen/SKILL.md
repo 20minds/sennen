@@ -18,4 +18,20 @@ description: |
   - model explanation and feature attribution -> /sen:explain
 ---
 
-Use Sennen as a repo-native ML workflow plugin. Keep substantive artifacts in `data/`, `src/`, `reports/`, `models/`, and `config/`. Reserve `.sennen/config.yaml` for minimal plugin metadata only. Respect existing Git and DVC structure when handling data and experiments. If data is downloaded into `data/raw/` or generated into `data/processed/`, version it with DVC when DVC is available. For experiment tracking, use MLflow when the repo already uses it or when the user explicitly asks for run tracking, and prefer a local SQLite tracking URI such as `sqlite:///mlflow.db` over deprecated file-backed metadata stores. If a Python package is needed, add it instead of removing the dependency from the approach. If the repo uses `uv`, add project dependencies with `uv add` rather than `uv pip install` or ad hoc package managers.
+Use Sennen as a repo-native ML workflow plugin. Keep substantive artifacts in `data/`, `src/`, `reports/`, `models/`, and `config/`. Prefer explicit, reviewable outputs over hidden plugin state.
+
+Repo contract:
+- raw source data goes in `data/raw/`
+- model-ready derived data goes in `data/processed/`
+- materialized split artifacts go in `data/splits/`
+- configs live under `config/`
+- experiment code lives under `src/experiment/`
+- reports live under `reports/`
+
+Operational rules:
+- respect existing Git and DVC structure when handling data and experiments
+- if data is downloaded into `data/raw/` or materialized into `data/processed/` or `data/splits/`, track it with DVC when DVC is available
+- prefer `uv run dvc add data/` only when `data/` is intentionally one DVC-managed artifact boundary; otherwise use narrower directories
+- use MLflow for run tracking when the repo uses it or the user asks for tracked runs, and prefer `sqlite:///mlflow.db` over file-backed metadata stores
+- if a Python package is needed, add it instead of removing the dependency from the approach
+- if the repo uses `uv`, add project dependencies with `uv add` rather than `uv pip install` or ad hoc package managers

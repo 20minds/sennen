@@ -9,15 +9,14 @@ from pathlib import Path
 ROOT = Path.cwd()
 
 DIRS = [
-    ".sennen",
     "config",
     "config/metrics",
     "config/split",
     "config/preprocess",
     "config/experiment",
     "data/raw",
-    "data/preprocessed",
     "data/processed",
+    "data/splits",
     "models",
     "reports/data_quality",
     "reports/explanations",
@@ -30,25 +29,6 @@ DIRS = [
 ]
 
 FILES = {
-    ".sennen/config.yaml": """layout_version: 1
-task_type: unknown
-target: null
-dataset_paths:
-  - data/raw
-entity_id: null
-time_column: null
-group_column: null
-notes: []
-repo_layout:
-  raw_data: data/raw
-  preprocessed_data: data/preprocessed
-  processed_data: data/processed
-  preprocess_code: src/preprocess
-  experiment_code: src/experiment
-  visualize_code: src/visualize
-  reports: reports
-  config: config
-""",
     "config/metrics/metrics.yaml": """primary_metric: null
 secondary_metrics: []
 objective_direction: maximize
@@ -80,21 +60,21 @@ notes: []
 """,
     "reports/data_quality/001_profile.md": """# Data Profile
 
-Run `/defects` to replace this stub with a real profile.
+Run `/sen:defects` to replace this stub with a real profile.
 """,
     "reports/review/001_initial_review.md": """# Review
 
-Run `/review` to replace this stub with a real critique.
+Run `/sen:review` to replace this stub with a real critique.
 """,
     "reports/experiments_latest.md": """# Experiment Report
 
-Run `/experiment` to replace this stub with a real report.
+Run `/sen:experiment` to replace this stub with a real report.
 """,
     "reports/explanations/001_initial_explanation.md": """# Explanation
 
 Run `/sen:explain` to replace this stub with a real explanation report.
 """,
-    "reports/figures/README.md": """# Figures
+    "reports/figures/001_overview.md": """# Figures
 
 Store generated plots and visualization outputs here. Use DVC if artifacts become large.
 """,
