@@ -1,5 +1,8 @@
 # `/sen:visualize`
 
-Inspect data structure and distributions.
+Use the matching `sen:visualize` skill as the source of truth for this command.
 
-Write visualization code in `src/visualize/001_inspect.py` or the next numbered file. Store figures and exported plots in `reports/figures/`. If large artifacts are produced and DVC is available, track them with DVC.
+Follow:
+- [visualize skill](../skills/visualize/SKILL.md)
+
+Keep behavior, outputs, and artifact paths aligned with that skill.

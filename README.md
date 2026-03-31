@@ -5,7 +5,7 @@
 
 ## Sennen Commands
 
-Commands are either exposed as `/sen:*` slash commands or `$sen:*` skills.
+Commands are either exposed as `/sen:*` slash commands or `$sen:*` skills. The `sen:*` skills are the source of truth; the Claude command files are thin wrappers around the matching skills.
 
 - `sen:data` - connect and version scientific datasets
 - `sen:visualize` - inspect data structure and distributions
