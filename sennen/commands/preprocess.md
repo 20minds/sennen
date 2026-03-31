@@ -1,5 +1,8 @@
 # `/sen:preprocess`
 
-Clean data and engineer features.
+Use the matching `sen:preprocess` skill as the source of truth for this command.
 
-Create preprocessing code in `src/preprocess/001_preprocess.py` or the next numbered file. Materialize outputs in `data/processed/`. If DVC is available, prefer `uv run dvc add data/` when `data/` is the intended DVC artifact boundary; otherwise use `uv run dvc add data/processed/`. Verify with `uv run dvc status`.
+Follow:
+- [preprocess skill](../skills/preprocess/SKILL.md)
+
+Keep behavior, outputs, and artifact paths aligned with that skill.

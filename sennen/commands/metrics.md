@@ -1,5 +1,8 @@
 # `/sen:metrics`
 
-Select evaluation metrics, configure MLflow tracking, and inspect tracked results.
+Use the matching `sen:metrics` skill as the source of truth for this command.
 
-Write the metric contract in `config/metrics/metrics.yaml`. Make the primary metric explicit, add supporting metrics where needed, and keep reporting aligned with the split strategy and task type. Use MLflow when the repo already uses it or the user explicitly asks for tracked runs, and prefer `sqlite:///mlflow.db` over file-backed metadata for local setups. If the user asks to view results, inspect the current MLflow runs and summarize the tracked metrics.
+Follow:
+- [metrics skill](../skills/metrics/SKILL.md)
+
+Keep behavior, outputs, and artifact paths aligned with that skill.

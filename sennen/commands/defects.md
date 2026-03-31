@@ -1,5 +1,8 @@
 # `/sen:defects`
 
-Find defects in the data itself.
+Use the matching `sen:defects` skill as the source of truth for this command.
 
-Focus on missing values, duplicates, invalid values, schema mismatches, malformed records, broken joins, label noise, and imbalance. Write findings under `reports/data_quality/001_profile.md` or the next numbered report. Leave leakage and contamination checks to `/sen:split`.
+Follow:
+- [defects skill](../skills/defects/SKILL.md)
+
+Keep behavior, outputs, and artifact paths aligned with that skill.
