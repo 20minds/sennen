@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 import os
 from pathlib import Path
 
@@ -12,43 +11,6 @@ from sennen.scripts import install_support
 @pytest.fixture
 def tmpdir_path(tmp_path: Path) -> Path:
     return tmp_path
-
-
-def test_update_marketplace_creates_expected_entry(tmpdir_path: Path) -> None:
-    marketplace = tmpdir_path / ".agents" / "plugins" / "marketplace.json"
-
-    install_support.update_marketplace(marketplace)
-
-    payload = json.loads(marketplace.read_text())
-    assert payload["name"] == "local-plugins"
-    assert payload["interface"]["displayName"] == "Local Plugins"
-    assert len(payload["plugins"]) == 1
-    assert payload["plugins"][0]["name"] == "sennen"
-    assert payload["plugins"][0]["source"]["path"] == "./plugins/sennen"
-
-
-def test_update_marketplace_preserves_other_plugins_and_replaces_sennen(tmpdir_path: Path) -> None:
-    marketplace = tmpdir_path / "marketplace.json"
-    marketplace.write_text(
-        json.dumps(
-            {
-                "name": "custom",
-                "interface": {"displayName": "Custom"},
-                "plugins": [
-                    {"name": "other", "source": {"source": "local", "path": "./plugins/other"}},
-                    {"name": "sennen", "source": {"source": "local", "path": "./bad/path"}},
-                ],
-            }
-        )
-    )
-
-    install_support.update_marketplace(marketplace)
-
-    payload = json.loads(marketplace.read_text())
-    assert len(payload["plugins"]) == 2
-    assert payload["plugins"][0]["name"] == "other"
-    assert payload["plugins"][1]["name"] == "sennen"
-    assert payload["plugins"][1]["source"]["path"] == "./plugins/sennen"
 
 
 def test_install_plugin_dir_symlinks_by_default(tmpdir_path: Path) -> None:
@@ -76,20 +38,96 @@ def test_install_plugin_dir_copies_when_requested(tmpdir_path: Path) -> None:
     assert (destination / "file.txt").read_text() == "hello"
 
 
-def test_install_codex_skills_copies_root_and_child_skills(tmpdir_path: Path) -> None:
-    plugin_root = tmpdir_path / "plugin"
-    source_root = plugin_root / "skills"
+def test_remove_legacy_codex_install_paths_cleans_legacy_paths(tmpdir_path: Path) -> None:
     target_repo = tmpdir_path / "repo"
-    (plugin_root / "SKILL.md").parent.mkdir(parents=True)
-    (plugin_root / "SKILL.md").write_text("# root\n")
-    (source_root / "data").mkdir(parents=True)
-    (source_root / "data" / "SKILL.md").write_text("# data\n")
-    (source_root / "metrics").mkdir(parents=True)
-    (source_root / "metrics" / "SKILL.md").write_text("# metrics\n")
+    (target_repo / ".agents" / "commands").mkdir(parents=True)
+    (target_repo / ".agents" / "commands" / "join.md").write_text("legacy\n")
+    (target_repo / ".agents" / "plugins").mkdir(parents=True)
+    (target_repo / ".agents" / "plugins" / "marketplace.json").write_text("{}\n")
+    (target_repo / ".codex" / "prompts").mkdir(parents=True)
+    (target_repo / ".codex" / "prompts" / "sen-join.md").write_text("legacy\n")
+    (target_repo / ".codex" / "commands").mkdir(parents=True)
+    (target_repo / ".codex" / "commands" / "join.md").write_text("legacy\n")
+    (target_repo / ".codex" / "skills").mkdir(parents=True)
+    (target_repo / ".codex" / "skills" / "SKILL.md").write_text("legacy\n")
 
-    installed = install_support.install_codex_skills(source_root, plugin_root, target_repo)
+    install_support.remove_legacy_codex_install_paths(target_repo)
 
-    assert len(installed) == 3
-    assert (target_repo / ".agents" / "skills" / "sennen" / "SKILL.md").read_text() == "# root\n"
-    assert (target_repo / ".agents" / "skills" / "sennen-data" / "SKILL.md").read_text() == "# data\n"
-    assert (target_repo / ".agents" / "skills" / "sennen-metrics" / "SKILL.md").read_text() == "# metrics\n"
+    assert not (target_repo / ".agents" / "commands").exists()
+    assert not (target_repo / ".agents" / "plugins").exists()
+    assert not (target_repo / ".codex" / "prompts").exists()
+    assert not (target_repo / ".codex" / "commands").exists()
+    assert not (target_repo / ".codex" / "skills").exists()
+
+
+def test_install_plugin_dir_forces_copy_when_exclusions_present(tmpdir_path: Path) -> None:
+    source = tmpdir_path / "source"
+    (source / "skills" / "sen-join").mkdir(parents=True)
+    (source / "skills" / "sen-join" / "SKILL.md").write_text("join\n")
+    (source / "skills" / "sen-data").mkdir(parents=True)
+    (source / "skills" / "sen-data" / "SKILL.md").write_text("data\n")
+    (source / "commands").mkdir()
+    (source / "commands" / "join.md").write_text("join cmd\n")
+    (source / "commands" / "data.md").write_text("data cmd\n")
+    destination = tmpdir_path / "dest" / "plugin"
+
+    install_support.install_plugin_dir(
+        source, destination, copy_mode=False, force=False, exclude_skill_names=["sen-join"]
+    )
+
+    assert destination.is_dir()
+    assert not destination.is_symlink()
+    assert not (destination / "skills" / "sen-join").exists()
+    assert not (destination / "commands" / "join.md").exists()
+    assert (destination / "skills" / "sen-data" / "SKILL.md").exists()
+    assert (destination / "commands" / "data.md").exists()
+
+
+def test_install_codex_skills_copies_skill_dirs(tmpdir_path: Path) -> None:
+    source_root = tmpdir_path / "skills"
+    (source_root / "sen-data").mkdir(parents=True)
+    (source_root / "sen-data" / "SKILL.md").write_text("data\n")
+    (source_root / "sen-join").mkdir(parents=True)
+    (source_root / "sen-join" / "SKILL.md").write_text("join\n")
+    destination_root = tmpdir_path / "dest"
+
+    installed = install_support.install_codex_skills(source_root, destination_root)
+
+    assert len(installed) == 2
+    assert (destination_root / "sen-data" / "SKILL.md").read_text() == "data\n"
+    assert (destination_root / "sen-join" / "SKILL.md").read_text() == "join\n"
+
+
+def test_install_codex_skills_excludes_named_skills(tmpdir_path: Path) -> None:
+    source_root = tmpdir_path / "skills"
+    (source_root / "sen-data").mkdir(parents=True)
+    (source_root / "sen-data" / "SKILL.md").write_text("data\n")
+    (source_root / "sen-join").mkdir(parents=True)
+    (source_root / "sen-join" / "SKILL.md").write_text("join\n")
+    (source_root / "db-chembl").mkdir(parents=True)
+    (source_root / "db-chembl" / "SKILL.md").write_text("chembl\n")
+    destination_root = tmpdir_path / "dest"
+
+    installed = install_support.install_codex_skills(
+        source_root, destination_root, exclude_skill_names=["sen-join", "db-chembl"]
+    )
+
+    assert len(installed) == 1
+    assert (destination_root / "sen-data" / "SKILL.md").exists()
+    assert not (destination_root / "sen-join").exists()
+    assert not (destination_root / "db-chembl").exists()
+
+
+def test_install_codex_skills_removes_previously_installed_excluded_skill(tmpdir_path: Path) -> None:
+    source_root = tmpdir_path / "skills"
+    (source_root / "sen-join").mkdir(parents=True)
+    (source_root / "sen-join" / "SKILL.md").write_text("join\n")
+    destination_root = tmpdir_path / "dest"
+    (destination_root / "sen-join").mkdir(parents=True)
+    (destination_root / "sen-join" / "SKILL.md").write_text("old\n")
+
+    install_support.install_codex_skills(
+        source_root, destination_root, exclude_skill_names=["sen-join"]
+    )
+
+    assert not (destination_root / "sen-join").exists()

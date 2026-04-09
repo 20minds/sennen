@@ -1,9 +1,9 @@
 ---
-name: sen:data
+name: sen-data
 description: Connect scientific data sources with Git and DVC-aware workflows.
 ---
 
-# Sennen `/data`
+# Sennen `/sen-data`
 
 Use this skill when the user needs to discover, inspect, or ingest scientific data.
 
@@ -30,7 +30,7 @@ Examples:
 
 - raw source artifacts under `data/raw/`
 - optional ingestion code in `src/data/00x_*.py`
-- optional schema or source notes in `reports/data_quality/` or `reports/review/`
+- optional schema or source notes in `results/data_quality/` or `results/review/`
 
 ## Workflow
 
@@ -39,7 +39,7 @@ Examples:
 3. If the source matches a supported scientific database, use the corresponding `db-*` skill. These `db-*` entries are skills, not just naming conventions.
 4. Recommend or implement a Git and DVC-friendly way to version dataset metadata and artifacts.
 5. Store raw inputs under `data/raw/`.
-6. If new ingestion code is needed, create `src/data/001_ingest.py` or the next available numbered file.
+6. If new ingestion code is needed, create `src/data/data_001_ingest.py` or the next available numbered file.
 7. If new raw data was downloaded and DVC is available, track it with DVC.
 
 ## Examples
@@ -58,7 +58,7 @@ Examples:
 - If the repo does not use DVC, do not introduce it unless the user asked for it or the workflow clearly benefits.
 - Before running `uv run dvc add data/`, inspect whether `data/` is already a mixed Git/DVC boundary. If it is, prefer subdirectories such as `data/raw/` instead of taking over the whole tree.
 - Prefer `data/raw/` for source data, not hidden plugin directories.
-- Prefer numbered ingestion scripts such as `src/data/001_ingest.py`, `src/data/002_openml_import.py`, or `src/data/003_hf_download.py`.
+- Prefer sortable ingestion scripts such as `src/data/data_001_ingest.py`, `src/data/data_002_openml_import.py`, or `src/data/data_003_hf_download.py`.
 - If extra Python packages are needed, install them instead of removing the dependency from the workflow.
 - If the repo uses `uv`, add those packages with `uv add`.
 - When data is downloaded into `data/raw/` and DVC is available, run DVC tracking for those artifacts rather than leaving them unversioned. Prefer `uv run dvc add data/` when `data/` is meant to be one DVC-managed artifact boundary; otherwise prefer `uv run dvc add data/raw/`. In both cases, verify with `uv run dvc status`.

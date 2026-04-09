@@ -1,22 +1,29 @@
 # Sennen
 
-| <img src="assets/sennen.png" alt="Sennen logo" /> | `Sennen` is a Claude Code / Codex plugin for ML workflows. <br/><br/> It provides reusable skills for data access, visualization, train/test splits, metrics, baselines, experiments, review, data defect analysis, preprocessing, and explanation. <br/><br/> It is designed for Git, MLflow experiment tracking, DVC data versioning, and scientific data sources. |
+| <img src="assets/sennen.png" alt="Sennen logo" /> | `Sennen` is a Claude Code / Codex plugin for ML workflows. <br/><br/> It provides reusable skills for repo diagnosis, planning, data access, joining meetings, visualization, train/test splits, metrics, baselines, experiments, review, data defect analysis, preprocessing, and explanation. <br/><br/> It is designed for Git, MLflow experiment tracking, DVC data versioning, and scientific data sources. |
 | ------------------------------------------------------------- | ---------------------------- |
 
 ## Sennen Commands
 
-Commands are either exposed as `/sen:*` slash commands or `$sen:*` skills. The `sen:*` skills are the source of truth; the Claude command files are thin wrappers around the matching skills.
+In Claude, skills are exposed as `/sen-*` and `/db-*`. In Codex, skills are available as `$sen-*` and `$db-*`.
 
-- `sen:data` - connect and version scientific datasets
-- `sen:visualize` - inspect data structure and distributions
-- `sen:defects` - find defects in the data itself
-- `sen:split` - create leakage-safe splits and test for leakage
-- `sen:metrics` - define metrics, MLflow tracking, and result views
-- `sen:baseline` - establish a baseline to beat
-- `sen:preprocess` - clean data and engineer features
-- `sen:experiment` - run and compare experiments
-- `sen:review` - review the ML approach
-- `sen:explain` - explain model behavior and feature importance
+### High-Level Commands
+
+- `sen-data` - connect and version scientific datasets
+- `sen-plan` - define the prediction task, split strategy, and metric contract
+- `sen-experiment` - run the first baseline or compare later experiments
+- `sen-review` - review the ML approach
+
+### Specialist Commands
+
+- `sen-defects` - find defects in the data itself
+- `sen-visualize` - inspect data structure and distributions
+- `sen-split` - create leakage-safe splits and test for leakage
+- `sen-metrics` - define metrics, MLflow tracking, and result views
+- `sen-preprocess` - clean data and engineer features
+- `sen-explain` - explain model behavior and feature importance
+- `sen-join` - join a Google Meet URL in guest mode
+- `sen-doctor` - diagnose and repair repo readiness for the Sennen workflow
 
 ## Example: Clinical Trial Enrollment Predictor
 
@@ -24,17 +31,15 @@ Goal: predict whether a clinical trial is still open to enrollment 12 months aft
 
 | Step | Command | Action |
 | --- | --- | --- |
-| 1 | `/sen:data` | ingest all ClinicalTrials.gov interventional studies |
-| 2 | `/sen:data` | load the data into a flat modeling table |
-| 3 | `/sen:visualize` | plot the enrollment survival curve |
-| 4 | `/sen:defects` | check for defects in the trial dates, statuses, and enrollment fields |
-| 5 | `/sen:split` | review the split for leakage and add an unseen-sponsor holdout |
-| 6 | `/sen:metrics` | define the metric contract for month-12 open probability |
-| 7 | `/sen:baseline` | build a baseline predictor and corresponding survival plots |
-| 8 | `/sen:experiment` | improve the baseline with stronger text-based models |
-| 9 | `/sen:experiment` | try a sentence embedding model and compare it against the sparse baseline |
-| 10 | `/sen:explain` | explain the most important variables in the best model |
-| 11 | `/sen:visualize` | plot survival curves for all experiments, ordered from baseline and then worst to best |
+| 1 | `/sen-data` | ingest all ClinicalTrials.gov interventional studies |
+| 2 | `/sen-data` | load the data into a flat modeling table |
+| 3 | `/sen-plan` | define the month-12 target, leakage-safe holdout, and metric contract |
+| 4 | `/sen-visualize` | plot the enrollment survival curve |
+| 5 | `/sen-experiment` | build a baseline predictor and corresponding survival plots |
+| 6 | `/sen-experiment` | improve the baseline with stronger text-based models |
+| 7 | `/sen-experiment` | try a sentence embedding model and compare it against the sparse baseline |
+| 8 | `/sen-explain` | explain the most important variables in the best model |
+| 9 | `/sen-review` | critique the workflow, results, and next actions |
 
 ## Data Versioning and Experiment Tracking
 
@@ -63,45 +68,42 @@ OR
 codex
 ```
 
+Repo-local setup installs:
+
+- Claude plugin files into `plugins/sennen`
+- Codex skills into `.agents/skills`
+
+Global setup installs:
+
+- Claude skills into `~/.claude/skills`
+- Codex skills into `~/.codex/skills`
+
 If you want Claude without `--plugin-dir`, use standalone project commands instead:
 
 ```bash
 ./setup --claude-standalone /your/data/folder
 ```
 
-This installs project commands into `/Volume/repo/.claude/commands/`, so Claude can load them automatically when you start `claude` in that repo.
+This installs project commands into `/your/data/folder/.claude/commands/` and the matching skill bundles into `/your/data/folder/.claude/skills/`, so Claude can load them automatically when you start `claude` in that repo.
 
-## Setup
+`setup` now also asks whether to install:
 
-When installing into a repo, `setup`:
+- the optional `db-*` scientific database skills
+- the optional `sen-join` conference-call skill
 
-- detects whether Git is already initialized
-- asks before running `git init` if it is missing
-- detects whether `.venv` already exists
-- asks before running `uv venv .venv` if it is missing
-- installs selected Python tooling into the repo with `uv add`
-- creates `pyproject.toml` for `uv`-managed dependencies if needed
-- does not support `requirements.txt` or `requirements.in` as setup-managed dependency files
-- enables DVC when requested by installing `dvc` and optionally running `dvc init`
-- installs `mlflow` when selected
-- asks whether to enable MLflow when you do not specify `--mlflow` or `--no-tracking`
-- adds conservative Python/ML `.gitignore`
-
-For Claude repo installs, `setup` links the plugin into `plugins/sennen` and prints the corresponding `claude --plugin-dir ...` command.
-
-For Claude standalone repo installs, `setup` writes project commands to `.claude/commands/`. This avoids `--plugin-dir`, but the commands are short standalone commands like `/data` and `/review`, not namespaced plugin commands like `/sen:data`.
+If you choose `sen-join`, setup will look for `TWENTYMINDS_API_KEY` in the environment or repo `.env`, and it can prompt you to save one. The skill is still installed even if no key is available yet.
 
 You can also run it non-interactively:
 
 ```bash
 ./setup . --yes
-./setup /Volume/repo --yes
-./setup --codex /Volume/repo --yes
-./setup --codex /Volume/repo --git --uv --dvc
-./setup --codex /Volume/repo --git --uv --mlflow
-./setup --codex /Volume/repo --no-git --no-uv --no-dvc
-./setup --claude /Volume/repo --yes
-./setup --claude-standalone /Volume/repo --yes
+./setup /your/data/folder --yes
+./setup --codex /your/data/folder --yes
+./setup --codex /your/data/folder --git --uv --dvc
+./setup --codex /your/data/folder --git --uv --mlflow
+./setup --codex /your/data/folder --no-git --no-uv --no-dvc
+./setup --claude /your/data/folder --yes
+./setup --claude-standalone /your/data/folder --yes
 ```
 
 ## Project Layout
@@ -111,38 +113,76 @@ You can also run it non-interactively:
 ```text
 .
 ├── config/
-│   ├── experiment/
+│   ├── exp/
+│   │   ├── exp_001_baseline.yaml
+│   │   ├── remix.yaml
+│   │   └── tracking.yaml
 │   ├── metrics/
 │   │   └── metrics.yaml
-│   ├── preprocess/
+│   ├── prepare/
 │   │   └── pipeline.yaml
 │   └── split/
 │       └── split.yaml
 ├── data/
 │   ├── raw/
 │   ├── processed/
+│   ├── results/
+│   │   └── exp_001_baseline/
 │   └── splits/
 ├── models/
-├── reports/
+│   ├── checkpoints/
+│   └── exports/
+├── results/
+│   └── exp_001_baseline/
+│       ├── metrics.yaml
+│       └── summary.md
 │   ├── data_quality/
 │   ├── explanations/
 │   ├── figures/
 │   ├── review/
-│   └── experiments_latest.md
 └── src/
     ├── data/
-    │   └── 001_*.py
-    ├── experiment/
-    │   └── 001_*.py
-    ├── preprocess/
-    │   └── 001_*.py
+    │   └── data_001_ingest.py
+    ├── exp/
+    │   └── exp_001_baseline.py
+    ├── lib/
+    ├── prepare/
+    │   └── prep_001_pipeline.py
     └── visualize/
-        └── 001_*.py
+        └── vis_001_inspect.py
 ```
 
 Those folders are conventions used by the skills. They are created by project work as needed, not by `setup`.
 
+Suggested use:
+
+- `config/exp/exp_001_baseline.yaml` stores the first baseline as a normal experiment config
+- later baselines can be added as `config/exp/exp_00x_<label>.yaml` with `kind: baseline`
+- use `reference_role: primary` to mark the default baseline comparison anchor when multiple baselines exist
+- `config/exp/tracking.yaml` stores MLflow tracking conventions such as `sqlite:///mlflow.db`
+- `results/exp_001_baseline/summary.md` and later `results/exp_00x_<label>/summary.md` files store human-readable experiment summaries
+- `results/exp_001_baseline/metrics.yaml` and later `results/exp_00x_<label>/metrics.yaml` files store Git-friendly machine-readable summaries such as metrics and runtime
+- `src/lib/` stores shared utilities that should not live in numbered workflow scripts
+- `src/exp/` stores sortable experiment entrypoints such as `exp_001_baseline.py`
+- `data/results/exp_00x_<label>/` stores large DVC-friendly prediction and evaluation artifacts
+- the default Git-friendly experiment summary pair lives under `results/exp_00x_<label>/`
+
 When `Sennen` downloads data into `data/raw/` or materializes outputs into `data/processed/` or `data/splits/`, those datasets should be tracked with DVC when DVC is available. Prefer `uv run dvc add data/` only when `data/` is intentionally one DVC-managed artifact boundary; otherwise track narrower directories. For experiment metrics, use MLflow to track runs in `sqlite:///mlflow.db`.
+
+## High-Level Workflow
+
+These high-level commands are the recommended entry points:
+
+| Command | Purpose | Maps to lower-level commands |
+| --- | --- | --- |
+| `/sen-plan` | Define the task, leakage-safe evaluation setup, and metric contract | `/sen-doctor`, `/sen-defects`, `/sen-split`, `/sen-metrics`, optionally `/sen-visualize` |
+| `/sen-data` | Ingest, inspect, and version data | `/sen-data`, optionally `/sen-defects`, `/sen-visualize`, and relevant `db-*` skills |
+| `/sen-experiment` | Run the first baseline when none exists, or run stronger models against the baseline afterward | `/sen-experiment`, optionally `/sen-preprocess`, `/sen-visualize`, `/sen-explain` |
+| `/sen-review` | Critique the approach, results, and next steps | `/sen-review`, optionally `/sen-experiment`, `/sen-visualize`, `/sen-explain` |
+
+`/sen-doctor` is a specialist diagnosis and repair command. Use it directly when you want to prepare or validate repo structure, DVC readiness, or MLflow readiness before higher-level workflow steps.
+
+`/sen-join` is a specialist utility command. It sends a request to the 20minds meeting-bot endpoint for a Google Meet URL and is intentionally separate from the main ML workflow commands.
 
 ## Scientific Database Skills
 

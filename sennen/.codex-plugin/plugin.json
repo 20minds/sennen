@@ -1,6 +1,6 @@
 {
   "name": "sennen",
-  "version": "0.1.0",
+  "version": "0.1.2",
   "description": "MIT-licensed ML research plugin for scientific datasets, Git, DVC, and reproducible evaluation workflows.",
   "author": {
     "name": "Dirk",
@@ -21,8 +21,8 @@
   "skills": "./skills/",
   "interface": {
     "displayName": "Sennen",
-    "shortDescription": "Scientific ML workflows for data, visualization, explanation, splits, metrics, baselines, review, and experiments.",
-    "longDescription": "Sennen packages reusable Codex skills for scientific ML work: connecting datasets, visualizing structure, explaining models, checking splits, choosing metrics, establishing baselines, running experiments, identifying defects, preprocessing features, and reviewing the approach with Git and DVC-aware workflows.",
+    "shortDescription": "Scientific ML workflows for repo diagnosis, planning, data, joining meetings, visualization, explanation, splits, metrics, baselines, review, and experiments.",
+    "longDescription": "Sennen packages reusable Codex skills for scientific ML work: diagnosing and repairing ML repo readiness, planning the problem and evaluation contract, connecting datasets, joining Google Meet URLs in guest mode, visualizing structure, explaining models, checking splits, choosing metrics, establishing baselines, running experiments, identifying defects, preprocessing features, and reviewing the approach with Git and DVC-aware workflows.",
     "developerName": "Dirk",
     "category": "Developer Tools",
     "capabilities": [
@@ -33,6 +33,8 @@
     "privacyPolicyURL": "https://github.com/dirk/sennen",
     "termsOfServiceURL": "https://github.com/dirk/sennen",
     "defaultPrompt": [
+      "/sen:doctor diagnose and repair repo readiness for the Sennen workflow.",
+      "/sen:plan define the prediction task, evaluation contract, and leakage-aware plan.",
       "/sen:data connect scientific data sources with Git and DVC support.",
       "/sen:review critique the current ML approach.",
       "/sen:baseline establish a reproducible baseline to beat."

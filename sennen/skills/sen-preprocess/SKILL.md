@@ -1,22 +1,22 @@
 ---
-name: sen:preprocess
+name: sen-preprocess
 description: Fix data defects and engineer features in a reproducible preprocessing pipeline.
 ---
 
-# Sennen `/preprocess`
+# Sennen `/sen-preprocess`
 
 Use this skill when the user wants preprocessing design or feature engineering.
 
 ## Read First
 
 - `config/split/split.yaml`
-- current preprocessing code under `src/preprocess/`
+- current preparation code under `src/prepare/`
 - current raw and processed data layout under `data/`
 
 ## Required Output
 
-- `config/preprocess/pipeline.yaml`
-- preprocessing code in `src/preprocess/00x_*.py`
+- `config/prepare/pipeline.yaml`
+- preparation code in `src/prepare/prep_00x_*.py`
 - outputs in `data/processed/`
 
 ## Include
@@ -31,8 +31,8 @@ Use this skill when the user wants preprocessing design or feature engineering.
 ## Workflow
 
 1. Read `config/split/split.yaml` and current preprocessing config if they exist.
-2. Write or update `config/preprocess/pipeline.yaml`.
-3. Create or update `src/preprocess/001_preprocess.py` or the next available numbered preprocessing file.
+2. Write or update `config/prepare/pipeline.yaml`.
+3. Create or update `src/prepare/prep_001_pipeline.py` or the next available numbered preparation file.
 4. Write derived outputs to `data/processed/`.
 5. If processed outputs were materialized and DVC is available, track them with DVC.
 
@@ -49,7 +49,7 @@ Use this skill when the user wants preprocessing design or feature engineering.
 - Keep the plan implementable in ordinary Python ML code.
 - Avoid transformations that require future information unless the split plan explicitly supports them.
 - Respect existing Git and DVC conventions for derived data and feature artifacts.
-- Prefer numbered scripts such as `src/preprocess/001_initial_cleaning.py`.
+- Prefer sortable scripts such as `src/prepare/prep_001_pipeline.py` and `src/prepare/prep_002_initial_cleaning.py`.
 - If extra Python preprocessing packages are needed, install them instead of dropping the preprocessing step.
 - If the repo uses `uv`, add those packages with `uv add`.
 - When outputs are written to `data/processed/` and DVC is available, track them with DVC rather than leaving them unmanaged. Prefer `uv run dvc add data/` when `data/` is the intended artifact boundary; otherwise prefer `uv run dvc add data/processed/`. Verify with `uv run dvc status`.

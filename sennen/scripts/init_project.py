@@ -12,19 +12,25 @@ DIRS = [
     "config",
     "config/metrics",
     "config/split",
-    "config/preprocess",
-    "config/experiment",
+    "config/prepare",
+    "config/exp",
     "data/raw",
     "data/processed",
+    "data/results",
     "data/splits",
     "models",
-    "reports/data_quality",
-    "reports/explanations",
-    "reports/review",
-    "reports/figures",
+    "models/checkpoints",
+    "models/exports",
+    "results",
+    "results/exp_001_baseline",
+    "results/data_quality",
+    "results/explanations",
+    "results/review",
+    "results/figures",
     "src/data",
-    "src/preprocess",
-    "src/experiment",
+    "src/prepare",
+    "src/exp",
+    "src/lib",
     "src/visualize",
 ]
 
@@ -44,44 +50,79 @@ time_column: null
 leakage_guards: []
 notes: []
 """,
-    "config/preprocess/pipeline.yaml": """imputation: []
+    "config/prepare/pipeline.yaml": """imputation: []
 encoding: []
 scaling: []
 feature_filters: []
 target_transform: null
 notes: []
 """,
-    "config/experiment/baseline.yaml": """name: baseline
-entrypoint: src/experiment/001_baseline.py
+    "config/exp/exp_001_baseline.yaml": """id: experiment_001
+kind: baseline
+name: baseline
+model_family: unspecified
+status: planned
+reference_role: primary
+implementation:
+  entrypoint: src/exp/exp_001_baseline.py
+  data_results_dir: data/results/exp_001_baseline
+  summary_dir: results/exp_001_baseline
 metric_config: config/metrics/metrics.yaml
 split_config: config/split/split.yaml
-preprocess_config: config/preprocess/pipeline.yaml
+prepare_config: config/prepare/pipeline.yaml
+comparison:
+  compare_against: []
 notes: []
 """,
-    "reports/data_quality/001_profile.md": """# Data Profile
-
-Run `/sen:defects` to replace this stub with a real profile.
+    "config/exp/tracking.yaml": """backend: mlflow
+tracking_uri: sqlite:///mlflow.db
+notes: []
 """,
-    "reports/review/001_initial_review.md": """# Review
-
-Run `/sen:review` to replace this stub with a real critique.
+    "config/exp/remix.yaml": """policy:
+  selector: uct
+  objective_direction: maximize
+  exploration_constant: 1.2
+  secondary_pool: completed_any
+  random_seed: 42
+  concurrency_target: 2
+state:
+  total_visits: 0
+  nodes: {}
+history: []
 """,
-    "reports/experiments_latest.md": """# Experiment Report
+    "results/data_quality/001_profile.md": """# Data Profile
 
-Run `/sen:experiment` to replace this stub with a real report.
+Run `/sen-defects` to replace this stub with a real profile.
 """,
-    "reports/explanations/001_initial_explanation.md": """# Explanation
+    "results/review/001_plan.md": """# Plan
 
-Run `/sen:explain` to replace this stub with a real explanation report.
+Run `/sen-plan` to replace this stub with a real problem and evaluation plan.
 """,
-    "reports/figures/001_overview.md": """# Figures
+    "results/review/001_initial_review.md": """# Review
+
+Run `/sen-review` to replace this stub with a real critique.
+""",
+    "results/exp_001_baseline/summary.md": """# Experiment Report
+
+Run `/sen-experiment` to replace this stub with a real report.
+""",
+    "results/exp_001_baseline/metrics.yaml": """primary_metric: null
+runtime_seconds: null
+notes: []
+""",
+    "results/explanations/001_initial_explanation.md": """# Explanation
+
+Run `/sen-explain` to replace this stub with a real explanation report.
+""",
+    "results/figures/001_overview.md": """# Figures
 
 Store generated plots and visualization outputs here. Use DVC if artifacts become large.
 """,
-    "src/data/001_ingest.py": '"""Data ingestion entrypoint."""\n',
-    "src/preprocess/001_preprocess.py": '"""Preprocessing entrypoint."""\n',
-    "src/experiment/001_baseline.py": '"""Baseline experiment entrypoint."""\n',
-    "src/visualize/001_inspect.py": '"""Visualization entrypoint."""\n',
+    "src/data/data_001_ingest.py": '"""Data ingestion entrypoint."""\n',
+    "src/prepare/prep_001_pipeline.py": '"""Preparation entrypoint."""\n',
+    "src/exp/exp_001_baseline.py": '"""Baseline experiment entrypoint."""\n',
+    "src/lib/__init__.py": '"""Shared utilities for Sennen-driven ML projects."""\n',
+    "src/visualize/vis_001_inspect.py": '"""Visualization entrypoint."""\n',
 }
 
 

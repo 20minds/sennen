@@ -3,19 +3,9 @@
 
 from __future__ import annotations
 
-import json
 import shutil
+from collections.abc import Iterable
 from pathlib import Path
-
-
-PLUGIN_NAME = "sennen"
-MARKETPLACE_DEFAULT = {
-    "name": "local-plugins",
-    "interface": {
-        "displayName": "Local Plugins",
-    },
-    "plugins": [],
-}
 
 
 def plugin_source_root() -> Path:
@@ -33,7 +23,36 @@ def ensure_target_repo(target_repo: Path) -> None:
         raise NotADirectoryError(f"Target repo is not a directory: {target_repo}")
 
 
-def install_plugin_dir(source: Path, destination: Path, copy_mode: bool, force: bool) -> None:
+def _excluded_plugin_paths(exclude_skill_names: Iterable[str]) -> list[Path]:
+    paths: list[Path] = []
+    for skill_name in exclude_skill_names:
+        normalized = skill_name.strip()
+        if not normalized:
+            continue
+        paths.append(Path("skills") / normalized)
+        # Only sen-* skills have matching command files; db-* and others do not.
+        if normalized.startswith("sen-"):
+            command_name = normalized.removeprefix("sen-")
+            paths.append(Path("commands") / f"{command_name}.md")
+    return paths
+
+
+def _prune_excluded_plugin_paths(destination: Path, exclude_skill_names: Iterable[str]) -> None:
+    for relative_path in _excluded_plugin_paths(exclude_skill_names):
+        target = destination / relative_path
+        if target.is_symlink() or target.is_file():
+            target.unlink()
+        elif target.is_dir():
+            shutil.rmtree(target)
+
+
+def install_plugin_dir(
+    source: Path,
+    destination: Path,
+    copy_mode: bool,
+    force: bool,
+    exclude_skill_names: Iterable[str] = (),
+) -> None:
     if destination.exists() or destination.is_symlink():
         if not force:
             raise FileExistsError(
@@ -45,79 +64,64 @@ def install_plugin_dir(source: Path, destination: Path, copy_mode: bool, force: 
             shutil.rmtree(destination)
 
     destination.parent.mkdir(parents=True, exist_ok=True)
-    if copy_mode:
+    excluded = [name.strip() for name in exclude_skill_names if name.strip()]
+    if copy_mode or excluded:
         shutil.copytree(source, destination)
+        if excluded:
+            _prune_excluded_plugin_paths(destination, excluded)
     else:
         destination.symlink_to(source, target_is_directory=True)
 
 
-def install_codex_skills(source_root: Path, plugin_root: Path, target_repo: Path) -> list[Path]:
-    skills_dir = target_repo / ".agents" / "skills"
-    skills_dir.mkdir(parents=True, exist_ok=True)
-    installed = []
+def remove_legacy_codex_install_paths(target_repo: Path) -> None:
+    legacy_paths = [
+        target_repo / ".agents" / "commands",
+        target_repo / ".agents" / "plugins",
+        target_repo / ".codex" / "prompts",
+        target_repo / ".codex" / "commands",
+        target_repo / ".codex" / "skills",
+    ]
+    for legacy_path in legacy_paths:
+        if legacy_path.is_symlink() or legacy_path.is_file():
+            legacy_path.unlink()
+        elif legacy_path.exists():
+            shutil.rmtree(legacy_path)
 
-    root_skill_source = plugin_root / "SKILL.md"
-    root_skill_dir = skills_dir / "sennen"
-    root_skill_dir.mkdir(parents=True, exist_ok=True)
-    root_skill_target = root_skill_dir / "SKILL.md"
-    shutil.copy2(root_skill_source, root_skill_target)
-    installed.append(root_skill_target)
+    agents_dir = target_repo / ".agents"
+    if agents_dir.exists() and not any(agents_dir.iterdir()):
+        agents_dir.rmdir()
 
-    for source in sorted(source_root.glob("*/SKILL.md")):
-        skill_name = source.parent.name
-        destination_dir = skills_dir / f"sennen-{skill_name}"
-        destination_dir.mkdir(parents=True, exist_ok=True)
-        destination = destination_dir / "SKILL.md"
-        shutil.copy2(source, destination)
-        installed.append(destination)
+
+def install_codex_skills(
+    source_root: Path,
+    destination_root: Path,
+    exclude_skill_names: Iterable[str] = (),
+) -> list[Path]:
+    destination_root.mkdir(parents=True, exist_ok=True)
+    installed: list[Path] = []
+    excluded = {name.strip() for name in exclude_skill_names if name.strip()}
+
+    for source in sorted(source_root.iterdir()):
+        if not source.is_dir():
+            continue
+        skill_name = source.name
+        if skill_name in excluded:
+            target = destination_root / skill_name
+            if target.is_symlink() or target.is_file():
+                target.unlink()
+            elif target.exists():
+                shutil.rmtree(target)
+            continue
+        if not (source / "SKILL.md").exists():
+            continue
+        destination_dir = destination_root / skill_name
+        if destination_dir.exists() or destination_dir.is_symlink():
+            if destination_dir.is_symlink() or destination_dir.is_file():
+                destination_dir.unlink()
+            else:
+                shutil.rmtree(destination_dir)
+        shutil.copytree(source, destination_dir)
+        installed.append(destination_dir / "SKILL.md")
 
     return installed
 
-
-def load_marketplace(path: Path) -> dict:
-    if not path.exists():
-        return json.loads(json.dumps(MARKETPLACE_DEFAULT))
-    with path.open() as handle:
-        payload = json.load(handle)
-    if not isinstance(payload, dict):
-        raise ValueError(f"Marketplace file must contain a JSON object: {path}")
-    return payload
-
-
-def update_marketplace(path: Path) -> None:
-    payload = load_marketplace(path)
-    plugins = payload.setdefault("plugins", [])
-    interface = payload.setdefault("interface", {})
-
-    if not isinstance(plugins, list):
-        raise ValueError(f"Marketplace field 'plugins' must be a list: {path}")
-    if not isinstance(interface, dict):
-        raise ValueError(f"Marketplace field 'interface' must be an object: {path}")
-
-    payload.setdefault("name", MARKETPLACE_DEFAULT["name"])
-    interface.setdefault("displayName", MARKETPLACE_DEFAULT["interface"]["displayName"])
-
-    entry = {
-        "name": PLUGIN_NAME,
-        "source": {
-            "source": "local",
-            "path": f"./plugins/{PLUGIN_NAME}",
-        },
-        "policy": {
-            "installation": "AVAILABLE",
-            "authentication": "ON_INSTALL",
-        },
-        "category": "Developer Tools",
-    }
-
-    for index, plugin in enumerate(plugins):
-        if isinstance(plugin, dict) and plugin.get("name") == PLUGIN_NAME:
-            plugins[index] = entry
-            break
-    else:
-        plugins.append(entry)
-
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open("w") as handle:
-        json.dump(payload, handle, indent=2)
-        handle.write("\n")
